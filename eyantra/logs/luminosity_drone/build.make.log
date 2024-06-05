@@ -1,0 +1,28 @@
+[35m[1mScanning dependencies of target _luminosity_drone_generate_messages_check_deps_Biolocation[0m
+[  0%] Built target _luminosity_drone_generate_messages_check_deps_Biolocation
+[35m[1mScanning dependencies of target _luminosity_drone_generate_messages_check_deps_Info[0m
+[  0%] Built target _luminosity_drone_generate_messages_check_deps_Info
+[35m[1mScanning dependencies of target luminosity_drone_generate_messages_eus[0m
+[  8%] [34m[1mGenerating EusLisp code from luminosity_drone/Biolocation.msg[0m
+[ 16%] [34m[1mGenerating EusLisp code from luminosity_drone/Info.msg[0m
+[ 25%] [34m[1mGenerating EusLisp manifest code for luminosity_drone[0m
+[ 25%] Built target luminosity_drone_generate_messages_eus
+[35m[1mScanning dependencies of target luminosity_drone_generate_messages_nodejs[0m
+[ 33%] [34m[1mGenerating Javascript code from luminosity_drone/Biolocation.msg[0m
+[ 41%] [34m[1mGenerating Javascript code from luminosity_drone/Info.msg[0m
+[ 41%] Built target luminosity_drone_generate_messages_nodejs
+[35m[1mScanning dependencies of target luminosity_drone_generate_messages_lisp[0m
+[ 50%] [34m[1mGenerating Lisp code from luminosity_drone/Biolocation.msg[0m
+[ 58%] [34m[1mGenerating Lisp code from luminosity_drone/Info.msg[0m
+[ 58%] Built target luminosity_drone_generate_messages_lisp
+[35m[1mScanning dependencies of target luminosity_drone_generate_messages_cpp[0m
+[ 66%] [34m[1mGenerating C++ code from luminosity_drone/Biolocation.msg[0m
+[ 75%] [34m[1mGenerating C++ code from luminosity_drone/Info.msg[0m
+[ 75%] Built target luminosity_drone_generate_messages_cpp
+[35m[1mScanning dependencies of target luminosity_drone_generate_messages_py[0m
+[ 83%] [34m[1mGenerating Python from MSG luminosity_drone/Biolocation[0m
+[ 91%] [34m[1mGenerating Python from MSG luminosity_drone/Info[0m
+[100%] [34m[1mGenerating Python msg __init__.py for luminosity_drone[0m
+[100%] Built target luminosity_drone_generate_messages_py
+[35m[1mScanning dependencies of target luminosity_drone_generate_messages[0m
+[100%] Built target luminosity_drone_generate_messages

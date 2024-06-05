@@ -1,0 +1,1 @@
+F:/home/abhishek/catkin_ws/devel/.private/rotors_swift_interface/lib/pkgconfig/rotors_swift_interface.pc

@@ -1,0 +1,8 @@
+prefix=/home/abhishek/catkin_ws/devel/.private/whycon
+
+Name: whycon
+Description: Description of whycon
+Version: 1.2.0
+Cflags: -I/home/abhishek/catkin_ws/devel/.private/whycon/include -I/home/abhishek/catkin_ws/src/luminosity_drone/whycon/include
+Libs: -L${prefix}/lib -lwhycon
+Requires: cv_bridge roscpp sensor_msgs std_msgs message_runtime geometry_msgs

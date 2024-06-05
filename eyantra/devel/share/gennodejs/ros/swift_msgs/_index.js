@@ -1,0 +1,1 @@
+F:/home/abhishek/catkin_ws/devel/.private/swift_msgs/share/gennodejs/ros/swift_msgs/_index.js
