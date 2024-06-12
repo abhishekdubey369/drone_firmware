@@ -1,41 +1,114 @@
 from pynput import mouse
 from plutocontrol import pluto
+from threading import Thread
+import time
 
+# Initialize and connect to the drone
 my_pluto = pluto()
+my_pluto.connect()
+my_pluto.arm()
+time.sleep(2)
 
-def identify_mouse_action(action, x, y, button, pressed, dx, dy):
+#mouse initialization
+# mouse = controller()
+
+# Global flag to control the listener loop
+keep_running = True
+prevx = 0
+prevy = 0
+
+def identify_mouse_action(action, x, y, button, pressed, dx, dy,keep_run):
+    global prevy
+    global prevx
     if action == 'click':
         if button == mouse.Button.left and pressed:
-            my_pluto.take_off()
+            if keep_running:
+                print("Left click: Taking off")
+                my_pluto.take_off()
         elif button == mouse.Button.right and pressed:
-            my_pluto.land()
-    elif action == 'move':
-        if x < 100:
+            if keep_running:
+                print("Right click: Landing")
+                my_pluto.land()
+    elif keep_running and action == 'move':
+        # print(f"Mouse moved to ({prevx-x}, {prevy-y})")
+        if prevx - x >= 20 and prevx != 0:
+            print("Moving left")
             my_pluto.left()
-        elif x > 500:
+        elif prevx - x <= -20 and prevx!=0 :
+            print("Moving right")
             my_pluto.right()
-        elif y < 100:
+        if prevy - y >= 20 and prevy!=0:
+            print("Moving forward")
             my_pluto.forward()
-        elif y > 500:
+        elif prevy - y <=-20 and prevy!=0:
+            print("Moving backward")
             my_pluto.backward()
-    elif action == 'scroll':
+    elif keep_running and action == 'scroll':
+        # print(f"Mouse scrolled at ({x}, {y}) with delta ({dx}, {dy})")
         if dy > 0:
+            print("Increasing height")
             my_pluto.increase_height()
         elif dy < 0:
+            print("Decreasing height")
             my_pluto.decrease_height()
+    elif keep_running!=True:
+        clean_exit()
+    prevx = x
+    prevy = y
 
+# Event handlers for mouse
 def on_click(x, y, button, pressed):
-    identify_mouse_action('click', x, y, button, pressed, None, None)
+    identify_mouse_action('click', x, y, button, pressed, None, None,keep_running)
 
 def on_move(x, y):
-    identify_mouse_action('move', x, y, None, None, None, None)
+    identify_mouse_action('move', x, y, None, None, None, None,keep_running)
 
 def on_scroll(x, y, dx, dy):
-    identify_mouse_action('scroll', x, y, None, None, dx, dy)
+    identify_mouse_action('scroll', x, y, None, None, dx, dy,keep_running)
 
-# Collect events until released
-with mouse.Listener(
-        on_click=on_click,
-        on_move=on_move,
-        on_scroll=on_scroll) as listener:
-    listener.join()
+def start_listener():
+    # Start the mouse listener in a separate thread
+    print("Starting mouse listener...")
+    if(keep_running!=True):
+        listener.join()
+    else:
+        listener =  mouse.Listener(on_click=on_click, on_move=on_move, on_scroll=on_scroll)
+        listener.start()
+    
+
+def clean_exit():
+    global keep_running
+    global prevy
+    global prevx
+    keep_running = False
+    try:
+        print("Disarming...")
+        my_pluto.disarm()
+        time.sleep(2)
+        print("Disconnecting...")
+        my_pluto.disconnect()
+    except Exception as e:
+        prevx = 0
+        prevy = 0
+        print(f"Exception during cleanup: {e}")
+    finally:
+        print("Exiting...")
+        exit()
+
+# Main loop
+if __name__ == "__main__":
+    listener_thread = Thread(target=start_listener)
+    listener_thread.start()
+
+    try:
+        while keep_running:
+            time.sleep(0.1)
+    except KeyboardInterrupt:
+        keep_running = False
+        print("KeyboardInterrupt caught. Exiting...")
+        clean_exit()
+    
+    listener_thread.join()
+
+    # Ensure listener thread exits properly
+    
