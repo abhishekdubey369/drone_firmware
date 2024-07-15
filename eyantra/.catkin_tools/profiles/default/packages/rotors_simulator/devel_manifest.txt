@@ -1,0 +1,2 @@
+luminosity_drone/swift_simulator/rotors_simulator
+/home/abhishek/catkin_ws/devel/.private/rotors_simulator/cmake.lock /home/abhishek/catkin_ws/devel/./cmake.lock

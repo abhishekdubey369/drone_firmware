@@ -1,0 +1,1 @@
+F:/home/abhishek/catkin_ws/devel/.private/swift_gazebo/lib/pkgconfig/swift_gazebo.pc
