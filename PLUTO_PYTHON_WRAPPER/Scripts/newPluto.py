@@ -2,13 +2,15 @@ import socket
 from threading import Thread
 import time
 
+# Constants
 TRIM_MAX = 1000
 TRIM_MIN = -1000
 MSP_HEADER_IN = "244d3c"
 
+# MSP Command Codes
 MSP_FC_VERSION = 3
 MSP_RAW_IMU = 102
-MSP_RAW_GPS = 106 #gps command
+MSP_RAW_GPS = 106
 MSP_COMP_GPS = 107
 MSP_RC = 105
 MSP_ATTITUDE = 108
@@ -24,30 +26,12 @@ MSP_EEPROM_WRITE = 250
 MSP_SET_POS = 216
 MSP_SET_COMMAND = 217
 MSP_SET_1WIRE = 243
-MSP_VARIO = 122  # Example MSP command for vario (check your drone's documentation for the correct value)
+MSP_VARIO = 122
 RETRY_COUNT = 3
-    
-# MSP_SET_RAW_RC = 200
-MSP_SET_RAW_GPS = 201
-MSP_SET_PID = 202
-MSP_SET_BOX = 203
-MSP_SET_RC_TUNING = 204
-# MSP_ACC_CALIBRATION = 205
-# MSP_MAG_CALIBRATION = 206
-MSP_SET_MISC = 207
-MSP_RESET_CONF = 208
-MSP_SET_WP = 209
-MSP_SELECT_SETTING = 210
-MSP_SET_HEAD = 211
-MSP_SET_SERVO_CONFIGURATION = 212
-# MSP_SET_MOTOR = 214
-# MSP_SET_3D = 217
-MSP_SET_RC_DEADBAND = 218
-MSP_SET_RESET_CURR_PID = 219
-MSP_SET_SENSOR_ALIGNMENT = 220
 
 class pluto:
     def __init__(self):
+        # Initialize RC values
         self.rcRoll = 1500
         self.rcPitch = 1500
         self.rcThrottle = 1500
@@ -56,46 +40,58 @@ class pluto:
         self.rcAUX2 = 1000
         self.rcAUX3 = 1500
         self.rcAUX4 = 1000
-        self.command_type = 0  # Initialize command_type here
+        
+        # Initialize command types
+        self.command_type = 0
         self.droneRC = [1500, 1500, 1500, 1500, 1500, 1000, 1500, 1000]
         self.NONE_COMMAND = 0
-        self.prev_values = [0,0,0]
+        
+        # Initialize PID control variables
+        self.prev_values = [0, 0, 0]
         self.last_time = 0.0000
-        self.error = [0.0,0.0,0.0]
-        self.abserror = [0,0,0]
-        self.errsum = [0,0,0]
-        self.now=0.0000
-        self.derr = [0,0,0]
+        self.error = [0.0, 0.0, 0.0]
+        self.abserror = [0, 0, 0]
+        self.errsum = [0, 0, 0]
+        self.now = 0.0000
+        self.derr = [0, 0, 0]
         self.sample_time = 60
-        self.out_roll=0.000
-        self.out_pitch=0.000
-        self.out_throttle=0.000
-        self.Kp = [0.8, 0.4, 380 , 50]
+        self.out_roll = 0.000
+        self.out_pitch = 0.000
+        self.out_throttle = 0.000
+        self.Kp = [0.8, 0.4, 380, 50]
         self.Ki = [0.02, 0.01, 0, 0]
         self.Kd = [18, 25, 10, 0]
-        self.drone_position = [0,0,0]
-        self.drone = [0.0,0.0,0.0]
+        self.drone_position = [0, 0, 0]
+        self.drone = [0.0, 0.0, 0.0]
+        
+        # GPS Position Hold variables
         self.target_gps = None
         self.position_hold_active = False
-        self.Kp_pos = [0.1, 0.1]  # Proportional gains for latitude and longitude
-        self.Ki_pos = [0.01, 0.01]  # Integral gains for latitude and longitude
-        self.Kd_pos = [0.5, 0.5]  # Derivative gains for latitude and longitude
-        self.error_sum_pos = [0.0, 0.0]  # Integral error for latitude and longitude
-        self.prev_error_pos = [0.0, 0.0]  # Previous error for derivative calculation
+        self.Kp_pos = [0.1, 0.1]
+        self.Ki_pos = [0.01, 0.01]
+        self.Kd_pos = [0.5, 0.5]
+        self.error_sum_pos = [0.0, 0.0]
+        self.prev_error_pos = [0.0, 0.0]
+        
+        # Flight control commands
         self.TAKE_OFF = 1
         self.LAND = 2
+        
+        # Connection flags
         self.connected = False
         self.cam_connected = False
         self.TCP_IP = '192.168.4.1'
         self.TCP_PORT = 23
+        
+        # Start write thread
         self.thread = Thread(target=self.write_function)
         self.thread.start()
 
+    # Connection Management
     def start_write_function(self):
         self.thread = Thread(target=self.write_function)
         self.thread.start()
         
-    
     def connect(self):
         if not self.connected:
             self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -117,7 +113,8 @@ class pluto:
         self.TCP_IP = '192.168.0.1'
         self.TCP_PORT = 9060
         self.camera_mode = True
-        
+
+    # Drone Control Commands
     def arm(self):
         print("Arming")
         self.rcRoll = 1500
@@ -127,7 +124,7 @@ class pluto:
         self.rcAUX4 = 1500
 
     def box_arm(self):
-        print("boxarm")
+        print("Box Arming")
         self.rcRoll = 1500
         self.rcYaw = 1500
         self.rcPitch = 1500
@@ -135,32 +132,32 @@ class pluto:
         self.rcAUX4 = 1500
 
     def disarm(self):
-        print("Disarm")
+        print("Disarming")
         self.rcThrottle = 1300
         self.rcAUX4 = 1200
 
     def forward(self):
-        print("Forward")
+        print("Moving Forward")
         self.rcPitch = 1600
 
     def backward(self):
-        print("Backward")
+        print("Moving Backward")
         self.rcPitch = 1300
 
     def left(self):
-        print("Left Roll")
+        print("Moving Left")
         self.rcRoll = 1200
 
     def right(self):
-        print("Right Roll")
+        print("Moving Right")
         self.rcRoll = 1600
 
     def left_yaw(self):
-        print("Left Yaw")
+        print("Yawing Left")
         self.rcYaw = 1300
 
     def right_yaw(self):
-        print("Right Yaw")
+        print("Yawing Right")
         self.rcYaw = 1600
 
     def reset(self):
@@ -171,56 +168,46 @@ class pluto:
         self.commandType = 0
 
     def increase_height(self):
-        print("Increasing height")
+        print("Increasing Height")
         self.rcThrottle = 1800
 
     def decrease_height(self):
-        print("Decreasing height")
+        print("Decreasing Height")
         self.rcThrottle = 1300
 
     def take_off(self):
         self.disarm()
         self.box_arm()
-        print("take off")
+        print("Taking Off")
         self.commandType = 1
 
     def land(self):
         self.commandType = 2
 
     def flip(self):
-        '''
-        Function to perform a backflip
-        '''
-        print("flip")
+        print("Performing Flip")
         flip_command = [3]  # Assuming 3 is the command for backflip
         flip_packet = self.create_packet_msp(MSP_SET_COMMAND, flip_command)
         self.send_packet(bytes.fromhex(flip_packet))
-        
-        # Adding throttle boost for the flip duration
-        self.throttle_speed(500, 1)  # Increase throttle by 500 for 1 second
-    
-    def throttle_speed(self,value,duration=0): 
-        '''
-        Function to set the throttle (z-axis movement) to the drone
-        '''
-        no_of_loops=10*duration 
-        self.droneRC[2]=self.clamp_rc(self.rcThrottle + value)    
-       
-        while(no_of_loops>0):
-         self.create_packet_msp(MSP_SET_RAW_RC,self.droneRC)
-         no_of_loops=no_of_loops-1
-         time.sleep(0.1)
-        if(duration==0):
-            self.create_packet_msp(MSP_SET_RAW_RC,self.droneRC)
+        self.throttle_speed(500, 1)
 
+    def throttle_speed(self, value, duration=0):
+        no_of_loops = 10 * duration
+        self.droneRC[2] = self.clamp_rc(self.rcThrottle + value)
+        while no_of_loops > 0:
+            self.create_packet_msp(MSP_SET_RAW_RC, self.droneRC)
+            no_of_loops -= 1
+            time.sleep(0.1)
+        if duration == 0:
+            self.create_packet_msp(MSP_SET_RAW_RC, self.droneRC)
+
+    # PID Control
     def pid(self, setpoint):
-		# time functions
         self.drone_position = self.get_drone_pos()
         self.now = int(round(time.time() * 1000))
         self.timechange = self.now - self.last_time
         if self.timechange > self.sample_time:
             if self.last_time != 0:
-
                 self.error[0] = self.drone_position[0] - setpoint[0]
                 self.error[1] = self.drone_position[1] - setpoint[1]
                 self.error[2] = self.drone_position[2] - setpoint[2]
@@ -229,71 +216,62 @@ class pluto:
                 self.abserror[1] = self.error[1]
                 self.abserror[2] = self.error[2]
 
-				# Integration for Ki
-                self.errsum[0] = self.errsum[0] + (self.error[0] * self.timechange)
-                self.errsum[1] = self.errsum[1] + (self.error[1] * self.timechange)
-                self.errsum[2] = self.errsum[2] + (self.error[2] * self.timechange)
+                self.errsum[0] += self.error[0] * self.timechange
+                self.errsum[1] += self.error[1] * self.timechange
+                self.errsum[2] += self.error[2] * self.timechange
 
-				# Derivation for Kd
                 self.derr[0] = (self.error[0] - self.prev_values[0]) / self.timechange
                 self.derr[1] = (self.error[1] - self.prev_values[1]) / self.timechange
                 self.derr[2] = (self.error[2] - self.prev_values[2]) / self.timechange
 
-                print([self.Kp,self.Ki,self.Kd])
+                print([self.Kp, self.Ki, self.Kd])
                 print(self.error)
 
-				# Calculating output in 1500
                 self.rcRoll = int(1500 - (self.Kp[0] * self.error[0]) - (self.Kd[0] * self.derr[0]))
                 self.rcPitch = int(1500 + (self.Kp[1] * self.error[1]) + (self.Kd[1] * self.derr[1]))
                 self.rcThrottle = int(1500 + (self.Kp[2] * self.error[2]) + (self.Kd[2] * self.derr[2]) - (self.errsum[2] * self.Ki[2]))
 
-				# Checking min and max threshold and updating on true
-				# Throttle Conditions
                 if self.rcThrottle > 2000:
                     self.rcThrottle = self.max_values
                 if self.rcThrottle < 1000:
                     self.rcThrottle = self.min_values
 
-				# Pitch Conditions
                 if self.rcPitch > 2000:
                     self.rcPitch = self.max_values
                 if self.rcPitch < 1000:
                     self.rcPitch = self.min_values
 
-				# Roll Conditions
                 if self.rcRoll > 2000:
                     self.rcRoll = self.max_values
                 if self.rcRoll < 1000:
                     self.rcRoll = self.min_values
-                
-                print([self.rcRoll,self.rcPitch,self.rcThrottle])
 
-				# Updating prev values for all axis
+                print([self.rcRoll, self.rcPitch, self.rcThrottle])
+
                 self.prev_values[0] = self.error[0]
                 self.prev_values[1] = self.error[1]
                 self.prev_values[2] = self.error[2]
 
-			# Updating last time value
             self.last_time = self.now
 
-    def altitude_set_pid(self,alt):
-        self.Kp[2] = alt.Kp * 0.06 # This is just for an example. You can change the ratio/fraction value accordingly
+    def altitude_set_pid(self, alt):
+        self.Kp[2] = alt.Kp * 0.06
         self.Ki[2] = alt.Ki * 0.0008
-        self.Kd[2] = alt.Kd * 0.3	
+        self.Kd[2] = alt.Kd * 0.3
 
-    def pitch_set_pid(self,pitch):
-        self.Kp[1] = pitch.Kp * 0.06 # This is just for an example. You can change the ratio/fraction value accordingly
+    def pitch_set_pid(self, pitch):
+        self.Kp[1] = pitch.Kp * 0.06
         self.Ki[1] = pitch.Ki * 0.0008
         self.Kd[1] = pitch.Kd * 0.3
-		
-    def roll_set_pid(self,roll):
-        self.Kp[0] = roll.Kp * 0.06 # This is just for an example. You can change the ratio/fraction value accordingly
+
+    def roll_set_pid(self, roll):
+        self.Kp[0] = roll.Kp * 0.06
         self.Ki[0] = roll.Ki * 0.0008
         self.Kd[0] = roll.Kd * 0.3
 
-    def clamp_rc(self,x:int):
-        #not called by user
-        return max(1000,min(2000,x))
+    # Utility Functions
+    def clamp_rc(self, x: int):
+        return max(1000, min(2000, x))
 
     def rc_values(self):
         return [self.rcRoll, self.rcPitch, self.rcThrottle, self.rcYaw,
@@ -310,22 +288,22 @@ class pluto:
     def trim_left_roll(self):
         print("Trimming Left Roll")
         self.rcRoll = max(TRIM_MIN, self.rcRoll + 100)
-    
-            
+
+    # MSP Request and Response Handling
     def send_request_msp(self, data):
-       if self.connected:
-           self.client.send(bytes.fromhex(data))
-       else:
-           if not hasattr(self, 'connection_error_logged'):
-               print("Error: Not connected to server")
-               self.connection_error_logged = True
+        if self.connected:
+            self.client.send(bytes.fromhex(data))
+        else:
+            if not hasattr(self, 'connection_error_logged'):
+                print("Error: Not connected to server")
+                self.connection_error_logged = True
 
     def create_packet_msp(self, msp, payload):
         bf = ""
         bf += MSP_HEADER_IN
 
         checksum = 0
-        if (msp == MSP_SET_COMMAND):
+        if msp == MSP_SET_COMMAND:
             pl_size = 1
         else:
             pl_size = len(payload) * 2
@@ -337,7 +315,7 @@ class pluto:
         checksum ^= msp
 
         for k in payload:
-            if (msp == MSP_SET_COMMAND):
+            if msp == MSP_SET_COMMAND:
                 bf += '{:02x}'.format(k & 0xFF)
                 checksum ^= k & 0xFF
             else:
@@ -385,7 +363,6 @@ class pluto:
 
         while self.connected:
             self.droneRC[:] = self.rc_values()
-
             self.send_request_msp_set_raw_rc(self.droneRC)
             self.send_request_msp_get_debug(requests)
 
@@ -395,9 +372,10 @@ class pluto:
 
             time.sleep(0.022)
 
+    # Sensor Data Retrieval
     def get_height(self):
         data = []
-        self.create_packet_msp(MSP_ALTITUDE, data) 
+        self.create_packet_msp(MSP_ALTITUDE, data)
         for i in range(RETRY_COUNT):
             data = self.receive_packet()
             i = 0
@@ -405,12 +383,12 @@ class pluto:
                 i += 1
             if i + 3 < len(data):
                 height = self.read16(data[i + 1:i + 3])
-                print(f"height: {height} cm")
+                print(f"Height: {height} cm")
                 return height
 
     def get_vario(self):
         data = []
-        self.create_packet_msp(MSP_ALTITUDE, data) 
+        self.create_packet_msp(MSP_ALTITUDE, data)
         for i in range(RETRY_COUNT):
             data = self.receive_packet()
             i = 0
@@ -421,7 +399,7 @@ class pluto:
 
     def get_roll(self):
         data = []
-        self.create_packet_msp(MSP_ATTITUDE, data) 
+        self.create_packet_msp(MSP_ATTITUDE, data)
         for i in range(RETRY_COUNT):
             data = self.receive_packet()
             i = 0
@@ -429,12 +407,12 @@ class pluto:
                 i += 1
             if i + 3 < len(data):
                 roll = self.read16(data[i + 1:i + 3]) / 10
-                print(f"roll: {roll} degrees")
+                print(f"Roll: {roll} degrees")
                 return roll
 
     def get_pitch(self):
         data = []
-        self.create_packet_msp(MSP_ATTITUDE, data) 
+        self.create_packet_msp(MSP_ATTITUDE, data)
         for i in range(RETRY_COUNT):
             data = self.receive_packet()
             i = 0
@@ -442,12 +420,12 @@ class pluto:
                 i += 1
             if i + 5 < len(data):
                 pitch = self.read16(data[i + 3:i + 5]) / 10
-                print(f"pitch: {pitch} degrees")
+                print(f"Pitch: {pitch} degrees")
                 return pitch
 
     def get_yaw(self):
         data = []
-        self.create_packet_msp(MSP_ATTITUDE, data) 
+        self.create_packet_msp(MSP_ATTITUDE, data)
         for i in range(RETRY_COUNT):
             data = self.receive_packet()
             i = 0
@@ -458,7 +436,7 @@ class pluto:
 
     def get_acc_x(self):
         data = []
-        self.create_packet_msp(MSP_RAW_IMU, data) 
+        self.create_packet_msp(MSP_RAW_IMU, data)
         for i in range(RETRY_COUNT):
             data = self.receive_packet()
             i = 0
@@ -469,7 +447,7 @@ class pluto:
 
     def get_acc_y(self):
         data = []
-        self.create_packet_msp(MSP_RAW_IMU, data) 
+        self.create_packet_msp(MSP_RAW_IMU, data)
         for i in range(RETRY_COUNT):
             data = self.receive_packet()
             i = 0
@@ -480,7 +458,7 @@ class pluto:
 
     def get_acc_z(self):
         data = []
-        self.create_packet_msp(MSP_RAW_IMU, data) 
+        self.create_packet_msp(MSP_RAW_IMU, data)
         for i in range(RETRY_COUNT):
             data = self.receive_packet()
             i = 0
@@ -491,7 +469,7 @@ class pluto:
 
     def get_gyro_x(self):
         data = []
-        self.create_packet_msp(MSP_RAW_IMU, data) 
+        self.create_packet_msp(MSP_RAW_IMU, data)
         for i in range(RETRY_COUNT):
             data = self.receive_packet()
             i = 0
@@ -502,7 +480,7 @@ class pluto:
 
     def get_gyro_y(self):
         data = []
-        self.create_packet_msp(MSP_RAW_IMU, data) 
+        self.create_packet_msp(MSP_RAW_IMU, data)
         for i in range(RETRY_COUNT):
             data = self.receive_packet()
             i = 0
@@ -513,7 +491,7 @@ class pluto:
 
     def get_gyro_z(self):
         data = []
-        self.create_packet_msp(MSP_RAW_IMU, data) 
+        self.create_packet_msp(MSP_RAW_IMU, data)
         for i in range(RETRY_COUNT):
             data = self.receive_packet()
             i = 0
@@ -524,7 +502,7 @@ class pluto:
 
     def get_mag_x(self):
         data = []
-        self.create_packet_msp(MSP_RAW_IMU, data) 
+        self.create_packet_msp(MSP_RAW_IMU, data)
         for i in range(RETRY_COUNT):
             data = self.receive_packet()
             i = 0
@@ -535,7 +513,7 @@ class pluto:
 
     def get_mag_y(self):
         data = []
-        self.create_packet_msp(MSP_RAW_IMU, data) 
+        self.create_packet_msp(MSP_RAW_IMU, data)
         for i in range(RETRY_COUNT):
             data = self.receive_packet()
             i = 0
@@ -546,7 +524,7 @@ class pluto:
 
     def get_mag_z(self):
         data = []
-        self.create_packet_msp(MSP_RAW_IMU, data) 
+        self.create_packet_msp(MSP_RAW_IMU, data)
         for i in range(RETRY_COUNT):
             data = self.receive_packet()
             i = 0
@@ -554,27 +532,24 @@ class pluto:
                 i += 1
             if i + 19 < len(data):
                 return self.read16(data[i + 17:i + 19])
-    
+
     def get_gps(self):
-        # Create MSP packet for requesting GPS data
         data = []
         self.create_packet_msp(MSP_RAW_GPS, data)
-        time.sleep(0.5)
         for i in range(RETRY_COUNT):
             data = self.receive_packet()
-            time.sleep(1)
-            # print(f"Received data: {data.hex()}")  # Log the raw received data for debugging
+            # print(f"Received data: {data.hex()}")
             i = 0
-            while i < len(data) and data[i] != 106:  # 106 is the code for GPS data
+            while i < len(data) and data[i] != 106:
                 i += 1
-            if i + 15 < len(data):
+            if i + 16 <= len(data):
                 lat = self.read32(data[i + 1:i + 5])
                 lon = self.read32(data[i + 5:i + 9])
                 num_sat = self.read8(data[i+9])
                 alt = self.read16(data[i + 10:i + 12])
                 speed = self.read16(data[i + 12:i + 14])
                 ground_course = self.read16(data[i + 14:i + 16])
-                
+
                 gps_data = {
                     "latitude": lat / 1e7,
                     "longitude": lon / 1e7,
@@ -583,7 +558,7 @@ class pluto:
                     "speed": speed,
                     "ground_course": ground_course
                 }
-                
+
                 print(f"GPS Data: {gps_data}")
                 return gps_data
         print("Failed to get GPS data")
@@ -591,17 +566,13 @@ class pluto:
 
     def get_drone_pos(self):
         drone_pos = self.get_gps()
-        if drone_pos!=None:
-            # if self.drone_position[0]-drone_pos["latitude"]<=5 and self.drone_position[1]-drone_pos["longitude"]<=5 and self.drone_position[2]-drone_pos["altitude"]<=5:
-            self.drone_position = [drone_pos["latitude"],drone_pos["longitude"],drone_pos["altitude"]]
-            # else:
-            #     print(drone_pos)
+        if drone_pos:
+            self.drone_position = [drone_pos["latitude"], drone_pos["longitude"], drone_pos["altitude"]]
         return self.drone_position
-
 
     def calibrate_acceleration(self):
         self.create_packet_msp(MSP_ACC_CALIBRATION, [])
-        time.sleep(5)  # Adjust sleep duration based on calibration time
+        time.sleep(5)
         acc_x = self.get_acc_x()
         acc_y = self.get_acc_y()
         acc_z = self.get_acc_z()
@@ -610,7 +581,7 @@ class pluto:
 
     def calibrate_magnetometer(self):
         self.create_packet_msp(MSP_MAG_CALIBRATION, [])
-        time.sleep(5)  # Adjust sleep duration based on calibration time
+        time.sleep(5)
         mag_x = self.get_mag_x()
         mag_y = self.get_mag_y()
         mag_z = self.get_mag_z()
@@ -619,7 +590,7 @@ class pluto:
 
     def get_battery(self):
         data = []
-        self.create_packet_msp(MSP_ANALOG, data) 
+        self.create_packet_msp(MSP_ANALOG, data)
         for i in range(RETRY_COUNT):
             data = self.receive_packet()
             i = 0
@@ -632,7 +603,7 @@ class pluto:
 
     def get_battery_percentage(self):
         data = []
-        self.create_send_msp_packet(MSP_ANALOG, data) 
+        self.create_send_msp_packet(MSP_ANALOG, data)
         for i in range(RETRY_COUNT):
             data = self.receive_packet()
             i = 0
@@ -643,7 +614,8 @@ class pluto:
                 battery_percentage = (battery_voltage / 4.2) * 100
                 print(f"Battery: {battery_percentage:.2f}%")
                 return battery_percentage
-            
+
+    # Packet Reading Functions
     def send_packet(self, buff):
         self.client.send(buff)
 
@@ -652,13 +624,14 @@ class pluto:
     
     def read8(self, arr):
         return int.from_bytes(arr,byteorder='little',signed=False)
-
+    
     def read16(self, arr):
         return int.from_bytes(arr, byteorder='little', signed=True)
 
     def read32(self, arr):
         return int.from_bytes(arr, byteorder='little', signed=True)
-    
+
+    # Position Hold Functions
     def activate_position_hold(self):
         self.target_gps = self.get_gps()
         if self.target_gps:
@@ -678,40 +651,30 @@ class pluto:
                 error_lat = self.target_gps["latitude"] - current_gps["latitude"]
                 error_lon = self.target_gps["longitude"] - current_gps["longitude"]
 
-                # Proportional term
                 P_lat = self.Kp_pos[0] * error_lat
                 P_lon = self.Kp_pos[1] * error_lon
 
-                # Integral term
                 self.error_sum_pos[0] += error_lat
                 self.error_sum_pos[1] += error_lon
                 I_lat = self.Ki_pos[0] * self.error_sum_pos[0]
                 I_lon = self.Ki_pos[1] * self.error_sum_pos[1]
 
-                # Derivative term
                 D_lat = self.Kd_pos[0] * (error_lat - self.prev_error_pos[0])
                 D_lon = self.Kd_pos[1] * (error_lon - self.prev_error_pos[1])
 
-                # Calculate control signals
                 control_lat = P_lat + I_lat + D_lat
                 control_lon = P_lon + I_lon + D_lon
 
-                # Update previous error
                 self.prev_error_pos[0] = error_lat
                 self.prev_error_pos[1] = error_lon
 
-                # Convert control signals to RC commands
                 self.rcPitch = int(1500 + control_lat * 1000)
                 self.rcRoll = int(1500 + control_lon * 1000)
 
-                # Clamp RC values
                 self.rcPitch = self.clamp_rc(self.rcPitch)
                 self.rcRoll = self.clamp_rc(self.rcRoll)
 
-                # Send RC commands
                 self.send_request_msp_set_raw_rc(self.rc_values())
                 print(f"Position hold: lat_error={error_lat:.6f}, lon_error={error_lon:.6f}, rcPitch={self.rcPitch}, rcRoll={self.rcRoll}")
 
-            time.sleep(0.1)  # Update rate
-
-
+            time.sleep(0.1)

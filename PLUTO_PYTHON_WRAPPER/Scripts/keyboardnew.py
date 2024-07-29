@@ -6,6 +6,33 @@ from threading import Thread
 
 my_pluto = pluto()
 
+
+def test_position_hold():
+    time.sleep(2)
+
+    # Arm the drone and take off
+    # my_pluto.arm()
+    # time.sleep(5)
+    my_pluto.take_off()
+
+    # Activate position hold
+    my_pluto.activate_position_hold()
+
+    # Update position hold in a loop
+    try:
+        while my_pluto:
+            my_pluto.update_position_hold()
+            time.sleep(0.1)  # Adjust update rate as needed
+    except KeyboardInterrupt:
+        # Deactivate position hold and land the drone when stopping the script
+        my_pluto.deactivate_position_hold()
+        my_pluto.land()
+
+    # # Disconnect from the drone
+    # my_drone.disarm()
+    # time.sleep(5)
+    # my_drone.disconnect()
+
 def pos_hold():
     global run_status
     my_pluto.activate_position_hold()
@@ -34,7 +61,10 @@ actions = {
     210: my_pluto.disconnect,
     211:my_pluto.flip,
     212:my_pluto.get_gps,
-    213: pos_hold,
+    213: my_pluto.activate_position_hold,
+    214:test_position_hold,
+    215:my_pluto.calibrate_acceleration,
+    216:my_pluto.calibrate_magnetometer,
 }
 
     
@@ -57,7 +87,7 @@ def clean_exit():
 keyboard_cmds = {  # dictionary containing the key pressed and value associated with it
     '[A': 10, '[D': 30, '[C': 40, 'w': 50, 's': 60, ' ': 70, 'r': 80, 't': 90,
     'p': 100, '[B': 110, 'n': 120, 'q': 130, 'e': 140, 'a': 150, 'd': 160,
-    '+': 15, '1': 25, '2': 30, '3': 35, '4': 45, 'c': 200, 'x': 210 , 'f':211 , 'g': 212, 'p':213,
+    '+': 15, '1': 25, '2': 30, '3': 35, '4': 45, 'c': 200, 'x': 210 , 'f':211 , 'g': 212, 'p':213, 'g':214,'i':215,'m':216,
 }
 run_status = True
 def getKey():
