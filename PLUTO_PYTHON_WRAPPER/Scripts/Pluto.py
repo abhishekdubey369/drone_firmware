@@ -75,6 +75,13 @@ class pluto:
         self.Kd = [18, 25, 10, 0]
         self.drone_position = [0,0,0]
         self.drone = [0.0,0.0,0.0]
+        self.target_gps = None
+        self.position_hold_active = False
+        self.Kp_pos = [0.1, 0.1]  # Proportional gains for latitude and longitude
+        self.Ki_pos = [0.01, 0.01]  # Integral gains for latitude and longitude
+        self.Kd_pos = [0.5, 0.5]  # Derivative gains for latitude and longitude
+        self.error_sum_pos = [0.0, 0.0]  # Integral error for latitude and longitude
+        self.prev_error_pos = [0.0, 0.0]  # Previous error for derivative calculation
         self.TAKE_OFF = 1
         self.LAND = 2
         self.connected = False
@@ -182,11 +189,15 @@ class pluto:
 
     def flip(self):
         '''
-        function for backflip'''
-
-        cmd = [3]
-        self.create_packet_msp(MSP_SET_COMMAND,cmd)
-        #add throttle_speed fun
+        Function to perform a backflip
+        '''
+        print("flip")
+        flip_command = [3]  # Assuming 3 is the command for backflip
+        flip_packet = self.create_packet_msp(MSP_SET_COMMAND, flip_command)
+        self.send_packet(bytes.fromhex(flip_packet))
+        
+        # Adding throttle boost for the flip duration
+        self.throttle_speed(500, 1)  # Increase throttle by 500 for 1 second
     
     def throttle_speed(self,value,duration=0): 
         '''
@@ -572,7 +583,7 @@ class pluto:
             
                 print(f"GPS Data: {gps_data}")
                 return gps_data
-        print("Failed to get GPS data")
+        print(self.get_drone_pos())
         return None
 
     def get_drone_pos(self):
@@ -644,4 +655,60 @@ class pluto:
         if result & 0x80000000:
             result -= 0x100000000
         return result
+    
+    def activate_position_hold(self):
+        self.target_gps = self.get_gps()
+        if self.target_gps:
+            self.position_hold_active = True
+            print(f"Position hold activated at: {self.target_gps}")
+        else:
+            print("Failed to get GPS coordinates for position hold")
+
+    def deactivate_position_hold(self):
+        self.position_hold_active = False
+        print("Position hold deactivated")
+
+    def update_position_hold(self):
+        if self.position_hold_active:
+            current_gps = self.get_gps()
+            if current_gps:
+                error_lat = self.target_gps["latitude"] - current_gps["latitude"]
+                error_lon = self.target_gps["longitude"] - current_gps["longitude"]
+
+                # Proportional term
+                P_lat = self.Kp_pos[0] * error_lat
+                P_lon = self.Kp_pos[1] * error_lon
+
+                # Integral term
+                self.error_sum_pos[0] += error_lat
+                self.error_sum_pos[1] += error_lon
+                I_lat = self.Ki_pos[0] * self.error_sum_pos[0]
+                I_lon = self.Ki_pos[1] * self.error_sum_pos[1]
+
+                # Derivative term
+                D_lat = self.Kd_pos[0] * (error_lat - self.prev_error_pos[0])
+                D_lon = self.Kd_pos[1] * (error_lon - self.prev_error_pos[1])
+
+                # Calculate control signals
+                control_lat = P_lat + I_lat + D_lat
+                control_lon = P_lon + I_lon + D_lon
+
+                # Update previous error
+                self.prev_error_pos[0] = error_lat
+                self.prev_error_pos[1] = error_lon
+
+                # Convert control signals to RC commands
+                self.rcPitch = int(1500 + control_lat * 1000)
+                self.rcRoll = int(1500 + control_lon * 1000)
+
+                # Clamp RC values
+                self.rcPitch = self.clamp_rc(self.rcPitch)
+                self.rcRoll = self.clamp_rc(self.rcRoll)
+
+                # Send RC commands
+                self.send_request_msp_set_raw_rc(self.rc_values())
+                print(f"Position hold: lat_error={error_lat:.6f}, lon_error={error_lon:.6f}, rcPitch={self.rcPitch}, rcRoll={self.rcRoll}")
+
+            time.sleep(0.1)  # Update rate
+
 

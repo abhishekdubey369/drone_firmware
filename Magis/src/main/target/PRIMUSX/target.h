@@ -30,6 +30,7 @@ extern "C" {
 //#define BEEP_GPIO   GPIOA
 //#define BEEP_PIN    Pin_5  // White LEDs - PA5
 //#define BEEP_PERIPHERAL RCC_AHBPeriph_GPIOA
+
 #define LED0_GPIO GPIOC
 #define LED0_PIN Pin_14 // PC14 (LED)	//Blue
 #define LED_R
